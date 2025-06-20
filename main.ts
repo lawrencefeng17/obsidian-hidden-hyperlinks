@@ -1,170 +1,125 @@
-import { Plugin, MarkdownPostProcessorContext } from 'obsidian';
+import { App, Plugin, MarkdownPostProcessorContext, Notice } from 'obsidian';
+import { HideRevealSettings, HideRevealSettingTab, DEFAULT_SETTINGS } from './settings';
+import { createHideRevealExtension } from './editor-extension';
+import { createSelectionExtension } from './selection-extension';
 
-interface HiddenHyperlinkSettings {
-	// Future settings can be added here
+export default class HideRevealPlugin extends Plugin {
+  settings: HideRevealSettings;
+  private editorExtension: any;
+
+  async onload() {
+    await this.loadSettings();
+    this.addSettingTab(new HideRevealSettingTab(this.app, this));
+
+    // Register markdown post-processor for reading mode
+    this.registerMarkdownPostProcessor((el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
+      this.postProcess(el);
+    });
+
+    // Register CodeMirror extension for editing mode
+    this.editorExtension = createHideRevealExtension(() => this.settings);
+    this.registerEditorExtension(this.editorExtension);
+    
+    // Register selection extension for expanding selections
+    this.registerEditorExtension(createSelectionExtension(() => this.settings));
+  }
+
+  async loadSettings() {
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+  }
+
+  async saveSettings() {
+    await this.saveData(this.settings);
+  }
+
+  postProcess(container: HTMLElement) {
+    const { startDelimiter, separator, endDelimiter } = this.settings;
+    const pattern = `${escapeRegex(startDelimiter)}(.*?)${escapeRegex(separator)}(.*?)${escapeRegex(endDelimiter)}`;
+    const regex = new RegExp(pattern, 'g');
+
+    this.walkTextNodes(container, (node: Text) => {
+      const text = node.textContent!;
+      let lastIndex = 0;
+      const frag = document.createDocumentFragment();
+      let match: RegExpExecArray | null;
+      let hasMatches = false;
+
+      regex.lastIndex = 0; // Reset regex state
+      while ((match = regex.exec(text))) {
+        hasMatches = true;
+        // Append text leading up to match
+        if (match.index > lastIndex) {
+          frag.append(document.createTextNode(text.slice(lastIndex, match.index)));
+        }
+
+        // Create interactive span
+        const span = document.createElement('span');
+        span.textContent = match[2].trim();
+        span.className = 'hide-reveal-link';
+        span.dataset.payload = match[1].trim();
+        span.style.cursor = 'pointer';
+        
+        // Create custom tooltip
+        const tooltip = document.createElement('div');
+        tooltip.className = 'hide-reveal-tooltip';
+        tooltip.textContent = match[1].trim();
+        span.appendChild(tooltip);
+
+        // Hover events for custom tooltip
+        span.addEventListener('mouseenter', () => {
+          tooltip.classList.add('show');
+        });
+
+        span.addEventListener('mouseleave', () => {
+          tooltip.classList.remove('show');
+        });
+
+        span.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          try {
+            await navigator.clipboard.writeText(span.dataset.payload!);
+            new Notice(this.settings.notificationText);
+          } catch (error) {
+            new Notice('Failed to copy to clipboard');
+            console.error('Clipboard write failed:', error);
+          }
+        });
+
+        frag.append(span);
+        lastIndex = match.index + match[0].length;
+      }
+
+      // Append trailing text
+      if (lastIndex < text.length) {
+        frag.append(document.createTextNode(text.slice(lastIndex)));
+      }
+
+      if (hasMatches) {
+        node.parentNode?.replaceChild(frag, node);
+      }
+    });
+  }
+
+  private walkTextNodes(element: HTMLElement, callback: (node: Text) => void) {
+    const walker = document.createTreeWalker(
+      element,
+      NodeFilter.SHOW_TEXT,
+      null
+    );
+
+    const textNodes: Text[] = [];
+    let node;
+    while (node = walker.nextNode()) {
+      textNodes.push(node as Text);
+    }
+
+    // Process nodes in reverse order to avoid DOM mutation issues
+    textNodes.reverse().forEach(callback);
+  }
 }
 
-const DEFAULT_SETTINGS: HiddenHyperlinkSettings = {
-	// Default values for future settings
-}
-
-export default class HiddenHyperlinksPlugin extends Plugin {
-	settings: HiddenHyperlinkSettings;
-
-	async onload() {
-		await this.loadSettings();
-
-		// Register the markdown post processor
-		this.registerMarkdownPostProcessor((element, context) => {
-			this.processHiddenHyperlinks(element, context);
-		});
-
-		// Add CSS for styling
-		this.addStyle();
-	}
-
-	onunload() {
-		// Clean up styles
-		this.removeStyle();
-	}
-
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-	}
-
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
-
-	processHiddenHyperlinks(element: HTMLElement, context: MarkdownPostProcessorContext) {
-		// Look for the pattern: {visible text|hidden:hidden_text}
-		const regex = /\{([^|]+)\|hidden:([^}]+)\}/g;
-		
-		// Find all text nodes in the element
-		const walker = document.createTreeWalker(
-			element,
-			NodeFilter.SHOW_TEXT,
-			null
-		);
-
-		const textNodes: Text[] = [];
-		let node;
-		while (node = walker.nextNode()) {
-			textNodes.push(node as Text);
-		}
-
-		// Process each text node
-		textNodes.forEach(textNode => {
-			const text = textNode.textContent || '';
-			// Debug logging
-			if (text.includes('{') && text.includes('hidden:')) {
-				console.log('Hidden Hyperlinks: Found potential match in text:', text);
-			}
-			if (regex.test(text)) {
-				console.log('Hidden Hyperlinks: Processing text:', text);
-				this.replaceHiddenHyperlinks(textNode, text);
-			}
-		});
-	}
-
-	replaceHiddenHyperlinks(textNode: Text, text: string) {
-		const regex = /\{([^|]+)\|hidden:([^}]+)\}/g;
-		const parent = textNode.parentNode;
-		if (!parent) return;
-
-		let lastIndex = 0;
-		let match;
-		const fragment = document.createDocumentFragment();
-
-		while ((match = regex.exec(text)) !== null) {
-			// Add text before the match
-			if (match.index > lastIndex) {
-				fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
-			}
-
-			// Create the hidden hyperlink element
-			const hiddenLink = this.createHiddenHyperlinkElement(match[1], match[2]);
-			fragment.appendChild(hiddenLink);
-
-			lastIndex = regex.lastIndex;
-		}
-
-		// Add remaining text after the last match
-		if (lastIndex < text.length) {
-			fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
-		}
-
-		// Replace the original text node with the fragment
-		parent.replaceChild(fragment, textNode);
-	}
-
-	createHiddenHyperlinkElement(visibleText: string, hiddenText: string): HTMLElement {
-		const span = document.createElement('span');
-		span.className = 'hidden-hyperlink';
-		span.textContent = visibleText;
-		span.title = 'Click to copy hidden text to clipboard';
-		
-		// Add click handler to copy hidden text to clipboard
-		span.addEventListener('click', async (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			
-			try {
-				await navigator.clipboard.writeText(hiddenText);
-				
-				// Show temporary feedback
-				this.showCopyFeedback(span, 'Copied!');
-			} catch (err) {
-				console.error('Failed to copy to clipboard:', err);
-				this.showCopyFeedback(span, 'Copy failed');
-			}
-		});
-
-		return span;
-	}
-
-	showCopyFeedback(element: HTMLElement, message: string) {
-		const originalText = element.textContent;
-		element.textContent = message;
-		element.style.opacity = '0.7';
-		
-		setTimeout(() => {
-			element.textContent = originalText;
-			element.style.opacity = '1';
-		}, 1000);
-	}
-
-	addStyle() {
-		const styleEl = document.createElement('style');
-		styleEl.id = 'hidden-hyperlinks-style';
-		styleEl.textContent = `
-			.hidden-hyperlink {
-				color: var(--link-color, #7c3aed);
-				text-decoration: underline;
-				text-decoration-style: dashed;
-				cursor: pointer;
-				border-radius: 3px;
-				padding: 1px 2px;
-				transition: all 0.2s ease;
-			}
-			
-			.hidden-hyperlink:hover {
-				background-color: var(--link-color-hover, rgba(124, 58, 237, 0.1));
-				text-decoration-style: solid;
-			}
-			
-			.hidden-hyperlink:active {
-				background-color: var(--link-color-hover, rgba(124, 58, 237, 0.2));
-				transform: scale(0.98);
-			}
-		`;
-		document.head.appendChild(styleEl);
-	}
-
-	removeStyle() {
-		const styleEl = document.getElementById('hidden-hyperlinks-style');
-		if (styleEl) {
-			styleEl.remove();
-		}
-	}
+// Utility to escape regex special chars
+function escapeRegex(s: string): string {
+  return s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
 } 

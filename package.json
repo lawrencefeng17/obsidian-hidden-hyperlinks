@@ -1,7 +1,7 @@
 {
-  "name": "hidden-hyperlinks",
-  "version": "1.0.0",
-  "description": "Obsidian plugin to hide text within other text and copy to clipboard",
+  "name": "obsidian-hidden-hyperlinks",
+  "version": "0.1.0",
+  "description": "Hide text behind display text and copy on click.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",

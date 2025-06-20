@@ -1,11 +1,12 @@
 {
-	"id": "hidden-hyperlinks",
-	"name": "Hidden Hyperlinks",
-	"version": "1.0.0",
-	"minAppVersion": "0.15.0",
-	"description": "Hide text within other text and copy hidden content to clipboard on click",
-	"author": "Your Name",
-	"authorUrl": "",
-	"fundingUrl": "",
-	"isDesktopOnly": false
-} 
+    "id": "obsidian-hidden-hyperlinks",
+    "name": "Hidden Hyperlinks",
+    "version": "0.1.0",
+    "minAppVersion": "1.0.0",
+    "main": "main.js",
+    "css": "styles.css",
+    "description": "Hide text behind display text and copy on click.",
+    "author": "Your Name",
+    "isDesktopOnly": false
+  }
+  

@@ -1,0 +1,89 @@
+.hide-reveal-link {
+  text-decoration: underline;
+  color: var(--interactive-normal);
+  cursor: pointer;
+  transition: color 0.2s ease;
+  position: relative;
+}
+
+.hide-reveal-link:hover {
+  color: var(--interactive-hover);
+  text-decoration: underline;
+}
+
+.hide-reveal-link:active {
+  color: var(--interactive-active);
+}
+
+/* Editor mode specific styling - using a more vibrant color */
+.hide-reveal-link-editor {
+  text-decoration: underline;
+  color: var(--color-accent);
+  cursor: pointer;
+  transition: color 0.2s ease;
+  font-weight: 500;
+  position: relative;
+}
+
+.hide-reveal-link-editor:hover {
+  color: var(--color-accent-hover, var(--color-accent));
+  text-decoration: underline;
+  opacity: 0.8;
+}
+
+.hide-reveal-link-editor:active {
+  color: var(--color-accent);
+  opacity: 0.6;
+}
+
+/* Expanded/revealed syntax styling - matches Obsidian's link styling */
+.hide-reveal-link-expanded {
+  text-decoration: underline;
+  color: var(--color-accent);
+  font-weight: 500;
+  cursor: pointer;
+  position: relative;
+}
+
+/* Custom tooltip styling */
+.hide-reveal-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: normal;
+  color: var(--text-normal);
+  white-space: nowrap;
+  z-index: 1000;
+  box-shadow: var(--shadow-s);
+  margin-bottom: 5px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.hide-reveal-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--background-modifier-border);
+}
+
+.hide-reveal-tooltip.show {
+  opacity: 1;
+}
+
+/* Ensure tooltips don't interfere with text selection */
+.hide-reveal-link:hover .hide-reveal-tooltip,
+.hide-reveal-link-editor:hover .hide-reveal-tooltip,
+.hide-reveal-link-expanded:hover .hide-reveal-tooltip {
+  opacity: 1;
+} 

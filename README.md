@@ -1,60 +1,84 @@
 # Hidden Hyperlinks Plugin for Obsidian
 
-Hide text within other text and copy hidden content to clipboard on click.
+Hide arbitrary text behind display text and copy the hidden payload to the clipboard when clicked.
 
 ## Features
 
-- Hide text within visible text using a simple syntax
-- Visual indication that text contains hidden content (dashed underline)
-- Click to copy hidden text to clipboard
-- Temporary visual feedback when copying
+- **Hide Secret Text**: Hide any text behind clickable display text
+- **One-Click Copy**: Click to copy hidden text to clipboard
+- **Customizable Syntax**: Configure your own delimiters and separators
+- **Unobtrusive Notifications**: Get feedback when text is copied
+- **Theme-Aware Styling**: Adapts to your Obsidian theme
 
 ## Usage
 
-Use the following syntax to create hidden hyperlinks:
+### Basic Syntax
 
+Using the default delimiters:
+
+```markdown
+::hidden payload|display text::
 ```
-{visible text|hidden:hidden_text}
-```
+
+- `hidden payload` - The secret text that gets copied to clipboard
+- `display text` - What users see and click on
 
 ### Examples
 
-**Input:**
+```markdown
+My email is ::user@example.com|click to copy::.
+
+The password is ::super-secret-123|reveal password::.
+
+Here's a long URL ::https://very-long-url.com/with/many/parameters|short link::.
 ```
-* {Inf2-3.1.2-70B-RC|hidden:/mnt/vast/share/inf2-training/experiments/3.1.2/job_id_11781/checkpoints/epoch_0/} was trained using {this data|hidden:/mnt/vast/share/inf2-training/data/prod_fudge_justpi_1_1/combined_formatted/sft/ad_jpi_9_21_f353_sftdpo_sft_d4h2_lm.jsonl}.
-```
 
-**Output:**
-* Inf2-3.1.2-70B-RC was trained using this data.
+### Custom Delimiters
 
-Where:
-- Clicking "Inf2-3.1.2-70B-RC" copies `/mnt/vast/share/inf2-training/experiments/3.1.2/job_id_11781/checkpoints/epoch_0/` to clipboard
-- Clicking "this data" copies `/mnt/vast/share/inf2-training/data/prod_fudge_justpi_1_1/combined_formatted/sft/ad_jpi_9_21_f353_sftdpo_sft_d4h2_lm.jsonl` to clipboard
+You can customize the delimiters in the plugin settings:
 
-## Visual Indicators
-
-- Hidden hyperlinks appear with a dashed underline
-- Hover effect shows background highlight
-- Tooltip shows "Click to copy hidden text to clipboard"
-- Temporary feedback shows "Copied!" when text is successfully copied
+- **Start Delimiter**: Default `::` 
+- **Separator**: Default `|`
+- **End Delimiter**: Default `::`
+- **Notification Text**: Default "Copied to clipboard!"
 
 ## Installation
 
-1. Copy the plugin files to your Obsidian plugins folder: `.obsidian/plugins/hidden-hyperlinks/`
-2. Enable the plugin in Obsidian settings
-3. Start using the `{visible text|hidden:hidden_text}` syntax in your notes
+### From Obsidian Community Plugins
+
+1. Open Obsidian Settings
+2. Go to Community Plugins and disable Safe Mode
+3. Click Browse and search for "Hidden Hyperlinks"
+4. Install and enable the plugin
+
+### Manual Installation
+
+1. Download the latest release files (`main.js`, `manifest.json`, `styles.css`)
+2. Create a folder named `obsidian-hidden-hyperlinks` in your vault's `.obsidian/plugins/` directory
+3. Place the downloaded files in this folder
+4. Reload Obsidian and enable the plugin in Community Plugins settings
 
 ## Development
 
-To build the plugin:
+### Building the Plugin
 
 ```bash
 npm install
 npm run build
 ```
 
-For development with auto-rebuild:
+### Development Mode
 
 ```bash
 npm run dev
-``` 
+```
+
+This will watch for changes and rebuild automatically.
+
+## License
+
+MIT
+
+## Support
+
+If you encounter any issues or have feature requests, please file them on the [GitHub repository](https://github.com/your-username/obsidian-hidden-hyperlinks). 

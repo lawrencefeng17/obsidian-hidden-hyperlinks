@@ -24,23 +24,331 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // main.ts
 var main_exports = {};
 __export(main_exports, {
-  default: () => HiddenHyperlinksPlugin
+  default: () => HideRevealPlugin
 });
 module.exports = __toCommonJS(main_exports);
+var import_obsidian3 = require("obsidian");
+
+// settings.ts
 var import_obsidian = require("obsidian");
 var DEFAULT_SETTINGS = {
-  // Default values for future settings
+  startDelimiter: "::",
+  separator: "|",
+  endDelimiter: "::",
+  notificationText: "Copied to clipboard!"
 };
-var HiddenHyperlinksPlugin = class extends import_obsidian.Plugin {
+var HideRevealSettingTab = class extends import_obsidian.PluginSettingTab {
+  constructor(app, plugin) {
+    super(app, plugin);
+    this.plugin = plugin;
+  }
+  display() {
+    const { containerEl } = this;
+    containerEl.empty();
+    containerEl.createEl("h2", { text: "Hidden Hyperlinks Settings" });
+    containerEl.createEl("p", {
+      text: "Configure how hidden hyperlinks are formatted and behave."
+    });
+    containerEl.createEl("h3", { text: "Delimiters" });
+    containerEl.createEl("p", {
+      text: "Example: ::hidden payload|display text::"
+    });
+    new import_obsidian.Setting(containerEl).setName("Start Delimiter").setDesc("Text that marks the beginning of a hidden block").addText(
+      (text) => text.setValue(this.plugin.settings.startDelimiter).onChange(async (value) => {
+        this.plugin.settings.startDelimiter = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian.Setting(containerEl).setName("Separator").setDesc("Text that separates the hidden payload from the display text").addText(
+      (text) => text.setValue(this.plugin.settings.separator).onChange(async (value) => {
+        this.plugin.settings.separator = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian.Setting(containerEl).setName("End Delimiter").setDesc("Text that marks the end of a hidden block").addText(
+      (text) => text.setValue(this.plugin.settings.endDelimiter).onChange(async (value) => {
+        this.plugin.settings.endDelimiter = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    containerEl.createEl("h3", { text: "Behavior" });
+    new import_obsidian.Setting(containerEl).setName("Notification Text").setDesc("Message shown when hidden text is copied to clipboard").addText(
+      (text) => text.setValue(this.plugin.settings.notificationText).onChange(async (value) => {
+        this.plugin.settings.notificationText = value;
+        await this.plugin.saveSettings();
+      })
+    );
+  }
+};
+
+// editor-extension.ts
+var import_obsidian2 = require("obsidian");
+var import_view = require("@codemirror/view");
+var import_state = require("@codemirror/state");
+function createHideRevealExtension(settings) {
+  return [
+    import_view.ViewPlugin.fromClass(
+      class {
+        constructor(view) {
+          this.decorations = this.buildDecorations(view);
+        }
+        update(update) {
+          if (update.docChanged || update.selectionSet) {
+            this.decorations = this.buildDecorations(update.view);
+          }
+        }
+        buildDecorations(view) {
+          const builder = new import_state.RangeSetBuilder();
+          const doc = view.state.doc;
+          const selection = view.state.selection.main;
+          const currentSettings = settings();
+          const { startDelimiter, separator, endDelimiter } = currentSettings;
+          const pattern = `${this.escapeRegex(startDelimiter)}(.*?)${this.escapeRegex(separator)}(.*?)${this.escapeRegex(endDelimiter)}`;
+          const regex = new RegExp(pattern, "g");
+          for (let i = 1; i <= doc.lines; i++) {
+            const line = doc.line(i);
+            const text = line.text;
+            let match;
+            regex.lastIndex = 0;
+            while ((match = regex.exec(text)) !== null) {
+              const matchStart = line.from + match.index;
+              const matchEnd = matchStart + match[0].length;
+              const cursorInMatch = selection.from >= matchStart && selection.from <= matchEnd;
+              const selectionOverlaps = selection.from <= matchEnd && selection.to >= matchStart;
+              if (!cursorInMatch && !selectionOverlaps) {
+                const displayText = match[2].trim();
+                const payload = match[1].trim();
+                const decoration = import_view.Decoration.replace({
+                  widget: new HideRevealWidget(displayText, payload, currentSettings)
+                });
+                builder.add(matchStart, matchEnd, decoration);
+              } else {
+                const payload = match[1].trim();
+                const markDecoration = import_view.Decoration.mark({
+                  class: "hide-reveal-link-expanded",
+                  attributes: {
+                    "data-payload": payload
+                  }
+                });
+                builder.add(matchStart, matchEnd, markDecoration);
+              }
+            }
+          }
+          return builder.finish();
+        }
+        escapeRegex(s) {
+          return s.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+        }
+      },
+      {
+        decorations: (v) => v.decorations
+      }
+    ),
+    import_view.EditorView.domEventHandlers({
+      click(event, view) {
+        const target = event.target;
+        if (target.classList.contains("hide-reveal-link-expanded") || target.closest(".hide-reveal-link-expanded")) {
+          const element = target.classList.contains("hide-reveal-link-expanded") ? target : target.closest(".hide-reveal-link-expanded");
+          const payload = element.getAttribute("data-payload");
+          if (payload) {
+            navigator.clipboard.writeText(payload).then(() => {
+              new import_obsidian2.Notice(settings().notificationText);
+            }).catch((error) => {
+              new import_obsidian2.Notice("Failed to copy to clipboard");
+              console.error("Clipboard write failed:", error);
+            });
+            event.preventDefault();
+            return true;
+          }
+        }
+        return false;
+      },
+      mouseenter(event, view) {
+        const target = event.target;
+        if (target.classList.contains("hide-reveal-link-expanded")) {
+          const payload = target.getAttribute("data-payload");
+          if (payload && !target.querySelector(".hide-reveal-tooltip")) {
+            const tooltip = document.createElement("div");
+            tooltip.className = "hide-reveal-tooltip show";
+            tooltip.textContent = payload;
+            target.appendChild(tooltip);
+          }
+        }
+        return false;
+      },
+      mouseleave(event, view) {
+        const target = event.target;
+        if (target.classList.contains("hide-reveal-link-expanded")) {
+          const tooltip = target.querySelector(".hide-reveal-tooltip");
+          if (tooltip) {
+            tooltip.remove();
+          }
+        }
+        return false;
+      },
+      mousedown(event, view) {
+        if (event.detail === 2) {
+          const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+          if (pos !== null) {
+            const hiddenLinkRange = findHiddenLinkAt(view, pos, settings());
+            if (hiddenLinkRange) {
+              view.dispatch({
+                selection: { anchor: hiddenLinkRange.from, head: hiddenLinkRange.to }
+              });
+              event.preventDefault();
+              return true;
+            }
+          }
+        }
+        return false;
+      }
+    })
+  ];
+}
+function findHiddenLinkAt(view, pos, currentSettings) {
+  const doc = view.state.doc;
+  const line = doc.lineAt(pos);
+  const { startDelimiter, separator, endDelimiter } = currentSettings;
+  const pattern = `${escapeRegex(startDelimiter)}(.*?)${escapeRegex(separator)}(.*?)${escapeRegex(endDelimiter)}`;
+  const regex = new RegExp(pattern, "g");
+  let match;
+  while ((match = regex.exec(line.text)) !== null) {
+    const matchStart = line.from + match.index;
+    const matchEnd = matchStart + match[0].length;
+    if (pos >= matchStart && pos <= matchEnd) {
+      return { from: matchStart, to: matchEnd };
+    }
+  }
+  return null;
+}
+function escapeRegex(s) {
+  return s.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+}
+var HideRevealWidget = class extends import_view.WidgetType {
+  constructor(displayText, payload, settings) {
+    super();
+    this.displayText = displayText;
+    this.payload = payload;
+    this.settings = settings;
+  }
+  toDOM(view) {
+    const span = document.createElement("span");
+    span.textContent = this.displayText;
+    span.className = "hide-reveal-link hide-reveal-link-editor";
+    span.style.cursor = "pointer";
+    const tooltip = document.createElement("div");
+    tooltip.className = "hide-reveal-tooltip";
+    tooltip.textContent = this.payload;
+    span.appendChild(tooltip);
+    span.addEventListener("mouseenter", () => {
+      tooltip.classList.add("show");
+    });
+    span.addEventListener("mouseleave", () => {
+      tooltip.classList.remove("show");
+    });
+    span.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        await navigator.clipboard.writeText(this.payload);
+        new import_obsidian2.Notice(this.settings.notificationText);
+      } catch (error) {
+        new import_obsidian2.Notice("Failed to copy to clipboard");
+        console.error("Clipboard write failed:", error);
+      }
+      view.focus();
+    });
+    return span;
+  }
+};
+
+// selection-extension.ts
+var import_state2 = require("@codemirror/state");
+var import_view2 = require("@codemirror/view");
+var expandSelectionEffect = import_state2.StateEffect.define();
+var selectionExpansionField = import_state2.StateField.define({
+  create() {
+    return null;
+  },
+  update(value, tr) {
+    for (let effect of tr.effects) {
+      if (effect.is(expandSelectionEffect)) {
+        return effect.value;
+      }
+    }
+    if (tr.selection) {
+      return null;
+    }
+    return value;
+  }
+});
+function createSelectionExtension(settings) {
+  return [
+    selectionExpansionField,
+    import_view2.EditorView.updateListener.of((update) => {
+      if (update.selectionSet && update.transactions.length > 0) {
+        const tr = update.transactions[0];
+        const selection = update.state.selection.main;
+        if (tr.isUserEvent("select") && !selection.empty) {
+          const hiddenLinkRanges = findOverlappingHiddenLinks(update.view, selection.from, selection.to, settings());
+          if (hiddenLinkRanges.length > 0) {
+            let expandedFrom = selection.from;
+            let expandedTo = selection.to;
+            for (const range of hiddenLinkRanges) {
+              if (range.from < expandedFrom)
+                expandedFrom = range.from;
+              if (range.to > expandedTo)
+                expandedTo = range.to;
+            }
+            if (expandedFrom !== selection.from || expandedTo !== selection.to) {
+              update.view.dispatch({
+                selection: { anchor: expandedFrom, head: expandedTo },
+                effects: expandSelectionEffect.of({ from: expandedFrom, to: expandedTo })
+              });
+            }
+          }
+        }
+      }
+    })
+  ];
+}
+function findOverlappingHiddenLinks(view, from, to, currentSettings) {
+  const doc = view.state.doc;
+  const ranges = [];
+  const { startDelimiter, separator, endDelimiter } = currentSettings;
+  const pattern = `${escapeRegex2(startDelimiter)}(.*?)${escapeRegex2(separator)}(.*?)${escapeRegex2(endDelimiter)}`;
+  const regex = new RegExp(pattern, "g");
+  const fromLine = doc.lineAt(from);
+  const toLine = doc.lineAt(to);
+  for (let lineNum = fromLine.number; lineNum <= toLine.number; lineNum++) {
+    const line = doc.line(lineNum);
+    let match;
+    regex.lastIndex = 0;
+    while ((match = regex.exec(line.text)) !== null) {
+      const matchStart = line.from + match.index;
+      const matchEnd = matchStart + match[0].length;
+      if (matchStart < to && matchEnd > from) {
+        ranges.push({ from: matchStart, to: matchEnd });
+      }
+    }
+  }
+  return ranges;
+}
+function escapeRegex2(s) {
+  return s.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+}
+
+// main.ts
+var HideRevealPlugin = class extends import_obsidian3.Plugin {
   async onload() {
     await this.loadSettings();
-    this.registerMarkdownPostProcessor((element, context) => {
-      this.processHiddenHyperlinks(element, context);
+    this.addSettingTab(new HideRevealSettingTab(this.app, this));
+    this.registerMarkdownPostProcessor((el, ctx) => {
+      this.postProcess(el);
     });
-    this.addStyle();
-  }
-  onunload() {
-    this.removeStyle();
+    this.editorExtension = createHideRevealExtension(() => this.settings);
+    this.registerEditorExtension(this.editorExtension);
+    this.registerEditorExtension(createSelectionExtension(() => this.settings));
   }
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -48,8 +356,61 @@ var HiddenHyperlinksPlugin = class extends import_obsidian.Plugin {
   async saveSettings() {
     await this.saveData(this.settings);
   }
-  processHiddenHyperlinks(element, context) {
-    const regex = /\{([^|]+)\|hidden:([^}]+)\}/g;
+  postProcess(container) {
+    const { startDelimiter, separator, endDelimiter } = this.settings;
+    const pattern = `${escapeRegex3(startDelimiter)}(.*?)${escapeRegex3(separator)}(.*?)${escapeRegex3(endDelimiter)}`;
+    const regex = new RegExp(pattern, "g");
+    this.walkTextNodes(container, (node) => {
+      var _a;
+      const text = node.textContent;
+      let lastIndex = 0;
+      const frag = document.createDocumentFragment();
+      let match;
+      let hasMatches = false;
+      regex.lastIndex = 0;
+      while (match = regex.exec(text)) {
+        hasMatches = true;
+        if (match.index > lastIndex) {
+          frag.append(document.createTextNode(text.slice(lastIndex, match.index)));
+        }
+        const span = document.createElement("span");
+        span.textContent = match[2].trim();
+        span.className = "hide-reveal-link";
+        span.dataset.payload = match[1].trim();
+        span.style.cursor = "pointer";
+        const tooltip = document.createElement("div");
+        tooltip.className = "hide-reveal-tooltip";
+        tooltip.textContent = match[1].trim();
+        span.appendChild(tooltip);
+        span.addEventListener("mouseenter", () => {
+          tooltip.classList.add("show");
+        });
+        span.addEventListener("mouseleave", () => {
+          tooltip.classList.remove("show");
+        });
+        span.addEventListener("click", async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          try {
+            await navigator.clipboard.writeText(span.dataset.payload);
+            new import_obsidian3.Notice(this.settings.notificationText);
+          } catch (error) {
+            new import_obsidian3.Notice("Failed to copy to clipboard");
+            console.error("Clipboard write failed:", error);
+          }
+        });
+        frag.append(span);
+        lastIndex = match.index + match[0].length;
+      }
+      if (lastIndex < text.length) {
+        frag.append(document.createTextNode(text.slice(lastIndex)));
+      }
+      if (hasMatches) {
+        (_a = node.parentNode) == null ? void 0 : _a.replaceChild(frag, node);
+      }
+    });
+  }
+  walkTextNodes(element, callback) {
     const walker = document.createTreeWalker(
       element,
       NodeFilter.SHOW_TEXT,
@@ -60,95 +421,9 @@ var HiddenHyperlinksPlugin = class extends import_obsidian.Plugin {
     while (node = walker.nextNode()) {
       textNodes.push(node);
     }
-    textNodes.forEach((textNode) => {
-      const text = textNode.textContent || "";
-      if (text.includes("{") && text.includes("hidden:")) {
-        console.log("Hidden Hyperlinks: Found potential match in text:", text);
-      }
-      if (regex.test(text)) {
-        console.log("Hidden Hyperlinks: Processing text:", text);
-        this.replaceHiddenHyperlinks(textNode, text);
-      }
-    });
-  }
-  replaceHiddenHyperlinks(textNode, text) {
-    const regex = /\{([^|]+)\|hidden:([^}]+)\}/g;
-    const parent = textNode.parentNode;
-    if (!parent)
-      return;
-    let lastIndex = 0;
-    let match;
-    const fragment = document.createDocumentFragment();
-    while ((match = regex.exec(text)) !== null) {
-      if (match.index > lastIndex) {
-        fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
-      }
-      const hiddenLink = this.createHiddenHyperlinkElement(match[1], match[2]);
-      fragment.appendChild(hiddenLink);
-      lastIndex = regex.lastIndex;
-    }
-    if (lastIndex < text.length) {
-      fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
-    }
-    parent.replaceChild(fragment, textNode);
-  }
-  createHiddenHyperlinkElement(visibleText, hiddenText) {
-    const span = document.createElement("span");
-    span.className = "hidden-hyperlink";
-    span.textContent = visibleText;
-    span.title = "Click to copy hidden text to clipboard";
-    span.addEventListener("click", async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      try {
-        await navigator.clipboard.writeText(hiddenText);
-        this.showCopyFeedback(span, "Copied!");
-      } catch (err) {
-        console.error("Failed to copy to clipboard:", err);
-        this.showCopyFeedback(span, "Copy failed");
-      }
-    });
-    return span;
-  }
-  showCopyFeedback(element, message) {
-    const originalText = element.textContent;
-    element.textContent = message;
-    element.style.opacity = "0.7";
-    setTimeout(() => {
-      element.textContent = originalText;
-      element.style.opacity = "1";
-    }, 1e3);
-  }
-  addStyle() {
-    const styleEl = document.createElement("style");
-    styleEl.id = "hidden-hyperlinks-style";
-    styleEl.textContent = `
-			.hidden-hyperlink {
-				color: var(--link-color, #7c3aed);
-				text-decoration: underline;
-				text-decoration-style: dashed;
-				cursor: pointer;
-				border-radius: 3px;
-				padding: 1px 2px;
-				transition: all 0.2s ease;
-			}
-			
-			.hidden-hyperlink:hover {
-				background-color: var(--link-color-hover, rgba(124, 58, 237, 0.1));
-				text-decoration-style: solid;
-			}
-			
-			.hidden-hyperlink:active {
-				background-color: var(--link-color-hover, rgba(124, 58, 237, 0.2));
-				transform: scale(0.98);
-			}
-		`;
-    document.head.appendChild(styleEl);
-  }
-  removeStyle() {
-    const styleEl = document.getElementById("hidden-hyperlinks-style");
-    if (styleEl) {
-      styleEl.remove();
-    }
+    textNodes.reverse().forEach(callback);
   }
 };
+function escapeRegex3(s) {
+  return s.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+}
