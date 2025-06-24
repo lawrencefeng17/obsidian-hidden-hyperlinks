@@ -1,12 +1,11 @@
 {
-    "id": "hidden-hyperlinks",
-    "name": "Ghost Text",
-    "version": "1.0.1",
-    "minAppVersion": "1.0.0",
-    "main": "main.js",
-    "css": "styles.css",
-    "description": "Hide text behind display text and copy on click.",
-    "author": "lawrencefeng17",
-    "isDesktopOnly": false
-  }
-
+	"id": "hidden-hyperlinks",
+	"name": "Ghost Text",
+	"version": "1.0.2",
+	"minAppVersion": "1.0.0",
+	"main": "main.js",
+	"css": "styles.css",
+	"description": "Hide text behind display text and copy on click.",
+	"author": "lawrencefeng17",
+	"isDesktopOnly": true
+}
