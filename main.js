@@ -345,7 +345,7 @@ var HideRevealPlugin = class extends import_obsidian3.Plugin {
     this.addSettingTab(new HideRevealSettingTab(this.app, this));
     this.registerMarkdownPostProcessor((el, ctx) => {
       this.postProcess(el);
-    });
+    }, -100);
     this.editorExtension = createHideRevealExtension(() => this.settings);
     this.registerEditorExtension(this.editorExtension);
     this.registerEditorExtension(createSelectionExtension(() => this.settings));
@@ -360,55 +360,150 @@ var HideRevealPlugin = class extends import_obsidian3.Plugin {
     const { startDelimiter, separator, endDelimiter } = this.settings;
     const pattern = `${escapeRegex3(startDelimiter)}(.*?)${escapeRegex3(separator)}(.*?)${escapeRegex3(endDelimiter)}`;
     const regex = new RegExp(pattern, "g");
-    this.walkTextNodes(container, (node) => {
-      var _a;
-      const text = node.textContent;
-      let lastIndex = 0;
-      const frag = document.createDocumentFragment();
-      let match;
-      let hasMatches = false;
-      regex.lastIndex = 0;
-      while (match = regex.exec(text)) {
-        hasMatches = true;
-        if (match.index > lastIndex) {
-          frag.append(document.createTextNode(text.slice(lastIndex, match.index)));
-        }
-        const span = document.createElement("span");
-        span.textContent = match[2].trim();
-        span.className = "hide-reveal-link";
-        span.dataset.payload = match[1].trim();
-        span.style.cursor = "pointer";
-        const tooltip = document.createElement("div");
-        tooltip.className = "hide-reveal-tooltip";
-        tooltip.textContent = match[1].trim();
-        span.appendChild(tooltip);
-        span.addEventListener("mouseenter", () => {
-          tooltip.classList.add("show");
-        });
-        span.addEventListener("mouseleave", () => {
-          tooltip.classList.remove("show");
-        });
-        span.addEventListener("click", async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          try {
-            await navigator.clipboard.writeText(span.dataset.payload);
-            new import_obsidian3.Notice(this.settings.notificationText);
-          } catch (error) {
-            new import_obsidian3.Notice("Failed to copy to clipboard");
-            console.error("Clipboard write failed:", error);
-          }
-        });
-        frag.append(span);
-        lastIndex = match.index + match[0].length;
+    const fullText = container.textContent || "";
+    if (regex.test(fullText)) {
+      this.processWithFullText(container, regex);
+    } else {
+      this.walkTextNodes(container, (node) => {
+        this.processTextNode(node, regex);
+      });
+    }
+  }
+  processWithFullText(container, regex) {
+    const innerHTML = container.innerHTML;
+    const fullText = container.textContent || "";
+    regex.lastIndex = 0;
+    const matches = [...fullText.matchAll(regex)];
+    if (matches.length === 0)
+      return;
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const match = matches[i];
+      const matchStart = match.index;
+      const matchEnd = matchStart + match[0].length;
+      const range = this.findTextRangeInContainer(container, matchStart, matchEnd);
+      if (range) {
+        this.replaceRangeWithHiddenLink(range, match[1].trim(), match[2].trim());
       }
-      if (lastIndex < text.length) {
-        frag.append(document.createTextNode(text.slice(lastIndex)));
+    }
+  }
+  findTextRangeInContainer(container, start, end) {
+    var _a;
+    const walker = document.createTreeWalker(
+      container,
+      NodeFilter.SHOW_TEXT,
+      null
+    );
+    let currentPos = 0;
+    let startNode = null;
+    let endNode = null;
+    let startOffset = 0;
+    let endOffset = 0;
+    let node;
+    while (node = walker.nextNode()) {
+      const nodeLength = ((_a = node.textContent) == null ? void 0 : _a.length) || 0;
+      const nodeStart = currentPos;
+      const nodeEnd = currentPos + nodeLength;
+      if (!startNode && start >= nodeStart && start <= nodeEnd) {
+        startNode = node;
+        startOffset = start - nodeStart;
       }
-      if (hasMatches) {
-        (_a = node.parentNode) == null ? void 0 : _a.replaceChild(frag, node);
+      if (end >= nodeStart && end <= nodeEnd) {
+        endNode = node;
+        endOffset = end - nodeStart;
+        break;
+      }
+      currentPos = nodeEnd;
+    }
+    if (startNode && endNode) {
+      const range = document.createRange();
+      range.setStart(startNode, startOffset);
+      range.setEnd(endNode, endOffset);
+      return range;
+    }
+    return null;
+  }
+  replaceRangeWithHiddenLink(range, payload, displayText) {
+    const span = document.createElement("span");
+    span.textContent = displayText;
+    span.className = "hide-reveal-link";
+    span.dataset.payload = payload;
+    span.style.cursor = "pointer";
+    const tooltip = document.createElement("div");
+    tooltip.className = "hide-reveal-tooltip";
+    tooltip.textContent = payload;
+    span.appendChild(tooltip);
+    span.addEventListener("mouseenter", () => {
+      tooltip.classList.add("show");
+    });
+    span.addEventListener("mouseleave", () => {
+      tooltip.classList.remove("show");
+    });
+    span.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        await navigator.clipboard.writeText(payload);
+        new import_obsidian3.Notice(this.settings.notificationText);
+      } catch (error) {
+        new import_obsidian3.Notice("Failed to copy to clipboard");
+        console.error("Clipboard write failed:", error);
       }
     });
+    try {
+      range.deleteContents();
+      range.insertNode(span);
+    } catch (error) {
+      console.error("Failed to replace range:", error);
+    }
+  }
+  processTextNode(node, regex) {
+    var _a;
+    const text = node.textContent;
+    let lastIndex = 0;
+    const frag = document.createDocumentFragment();
+    let match;
+    let hasMatches = false;
+    regex.lastIndex = 0;
+    while (match = regex.exec(text)) {
+      hasMatches = true;
+      if (match.index > lastIndex) {
+        frag.append(document.createTextNode(text.slice(lastIndex, match.index)));
+      }
+      const span = document.createElement("span");
+      span.textContent = match[2].trim();
+      span.className = "hide-reveal-link";
+      span.dataset.payload = match[1].trim();
+      span.style.cursor = "pointer";
+      const tooltip = document.createElement("div");
+      tooltip.className = "hide-reveal-tooltip";
+      tooltip.textContent = match[1].trim();
+      span.appendChild(tooltip);
+      span.addEventListener("mouseenter", () => {
+        tooltip.classList.add("show");
+      });
+      span.addEventListener("mouseleave", () => {
+        tooltip.classList.remove("show");
+      });
+      span.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          await navigator.clipboard.writeText(span.dataset.payload);
+          new import_obsidian3.Notice(this.settings.notificationText);
+        } catch (error) {
+          new import_obsidian3.Notice("Failed to copy to clipboard");
+          console.error("Clipboard write failed:", error);
+        }
+      });
+      frag.append(span);
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < text.length) {
+      frag.append(document.createTextNode(text.slice(lastIndex)));
+    }
+    if (hasMatches) {
+      (_a = node.parentNode) == null ? void 0 : _a.replaceChild(frag, node);
+    }
   }
   walkTextNodes(element, callback) {
     const walker = document.createTreeWalker(

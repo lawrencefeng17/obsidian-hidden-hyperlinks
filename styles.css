@@ -1,18 +1,21 @@
 .hide-reveal-link {
   text-decoration: underline;
-  color: var(--interactive-normal);
+  color: var(--color-accent);
   cursor: pointer;
   transition: color 0.2s ease;
   position: relative;
+  font-weight: 500;
 }
 
 .hide-reveal-link:hover {
-  color: var(--interactive-hover);
+  color: var(--color-accent-hover, var(--color-accent));
   text-decoration: underline;
+  opacity: 0.8;
 }
 
 .hide-reveal-link:active {
-  color: var(--interactive-active);
+  color: var(--color-accent);
+  opacity: 0.6;
 }
 
 /* Editor mode specific styling - using a more vibrant color */

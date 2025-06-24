@@ -9,6 +9,8 @@ Hide arbitrary text behind display text and copy the hidden payload to the clipb
 - **Customizable Syntax**: Configure your own delimiters and separators
 - **Unobtrusive Notifications**: Get feedback when text is copied
 - **Theme-Aware Styling**: Adapts to your Obsidian theme
+- **Tooltip**: Show the hidden payload when hovering over the display text
+
 
 ## Usage
 
@@ -37,7 +39,7 @@ Here's a long URL ::https://very-long-url.com/with/many/parameters|short link::.
 
 You can customize the delimiters in the plugin settings:
 
-- **Start Delimiter**: Default `::` 
+- **Start Delimiter**: Default `::`
 - **Separator**: Default `|`
 - **End Delimiter**: Default `::`
 - **Notification Text**: Default "Copied to clipboard!"
@@ -81,4 +83,4 @@ MIT
 
 ## Support
 
-If you encounter any issues or have feature requests, please file them on the [GitHub repository](https://github.com/your-username/obsidian-hidden-hyperlinks). 
+If you encounter any issues or have feature requests, please file them on the [GitHub repository](https://github.com/your-username/obsidian-hidden-hyperlinks).
