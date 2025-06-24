@@ -1,6 +1,6 @@
 {
-  "name": "obsidian-hidden-hyperlinks",
-  "version": "0.1.0",
+  "name": "Ghost Text",
+  "version": "1.0.1",
   "description": "Hide text behind display text and copy on click.",
   "main": "main.js",
   "scripts": {
@@ -9,7 +9,7 @@
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
   "keywords": [],
-  "author": "",
+  "author": "lawrencefeng17",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^16.11.6",
