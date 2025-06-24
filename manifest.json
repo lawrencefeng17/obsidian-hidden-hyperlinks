@@ -1,12 +1,12 @@
 {
     "id": "hidden-hyperlinks",
-    "name": "Hidden Hyperlinks",
-    "version": "0.1.0",
+    "name": "Ghost Text",
+    "version": "1.0.0",
     "minAppVersion": "1.0.0",
     "main": "main.js",
     "css": "styles.css",
     "description": "Hide text behind display text and copy on click.",
-    "author": "Your Name",
+    "author": "Lawrence Feng",
     "isDesktopOnly": false
   }
   
