@@ -27,12 +27,14 @@ Using the default delimiters:
 
 ### Examples
 
+![Demo](demo.gif)
+
 ```markdown
-My email is ::user@example.com|click to copy::.
+* start interactive slurm job using ::srun --gres=gpu:1 --pty bash|this::
 
-The password is ::super-secret-123|reveal password::.
+* I found this cool ::https://very-long-url.com/with/many/parameters|website::.
 
-Here's a long URL ::https://very-long-url.com/with/many/parameters|short link::.
+* this useful python file is ::really/long/file/path/that/does/not/nicely/fit/anywhere|here::
 ```
 
 ### Custom Delimiters
