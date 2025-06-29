@@ -27,7 +27,7 @@ Using the default delimiters:
 
 ### Examples
 
-![Demo](demo.gif)
+![Demo](ghost_text_demo.gif)
 
 ```markdown
 * start interactive slurm job using ::srun --gres=gpu:1 --pty bash|this::
