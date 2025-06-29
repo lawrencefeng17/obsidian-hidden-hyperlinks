@@ -1,7 +1,7 @@
 {
 	"id": "hidden-hyperlinks",
 	"name": "Ghost Text",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"minAppVersion": "1.0.0",
 	"description": "Hide text behind display text and copy on click.",
 	"author": "lawrencefeng17",
