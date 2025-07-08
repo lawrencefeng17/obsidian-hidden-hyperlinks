@@ -235,7 +235,6 @@ var HideRevealWidget = class extends import_view.WidgetType {
     const span = document.createElement("span");
     span.textContent = this.displayText;
     span.className = "hide-reveal-link hide-reveal-link-editor";
-    span.style.cursor = "pointer";
     const tooltip = document.createElement("div");
     tooltip.className = "hide-reveal-tooltip";
     tooltip.textContent = this.payload;
@@ -370,7 +369,6 @@ var HideRevealPlugin = class extends import_obsidian3.Plugin {
     }
   }
   processWithFullText(container, regex) {
-    const innerHTML = container.innerHTML;
     const fullText = container.textContent || "";
     regex.lastIndex = 0;
     const matches = [...fullText.matchAll(regex)];
@@ -427,7 +425,6 @@ var HideRevealPlugin = class extends import_obsidian3.Plugin {
     span.textContent = displayText;
     span.className = "hide-reveal-link";
     span.dataset.payload = payload;
-    span.style.cursor = "pointer";
     const tooltip = document.createElement("div");
     tooltip.className = "hide-reveal-tooltip";
     tooltip.textContent = payload;
@@ -473,7 +470,6 @@ var HideRevealPlugin = class extends import_obsidian3.Plugin {
       span.textContent = match[2].trim();
       span.className = "hide-reveal-link";
       span.dataset.payload = match[1].trim();
-      span.style.cursor = "pointer";
       const tooltip = document.createElement("div");
       tooltip.className = "hide-reveal-tooltip";
       tooltip.textContent = match[1].trim();

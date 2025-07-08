@@ -53,7 +53,6 @@ export default class HideRevealPlugin extends Plugin {
 
   private processWithFullText(container: HTMLElement, regex: RegExp) {
     // Get all text content while preserving structure
-    const innerHTML = container.innerHTML;
     const fullText = container.textContent || '';
     
     regex.lastIndex = 0;
@@ -126,7 +125,6 @@ export default class HideRevealPlugin extends Plugin {
     span.textContent = displayText;
     span.className = 'hide-reveal-link';
     span.dataset.payload = payload;
-    span.style.cursor = 'pointer';
     
     // Create custom tooltip
     const tooltip = document.createElement('div');
@@ -184,7 +182,6 @@ export default class HideRevealPlugin extends Plugin {
       span.textContent = match[2].trim();
       span.className = 'hide-reveal-link';
       span.dataset.payload = match[1].trim();
-      span.style.cursor = 'pointer';
       
       // Create custom tooltip
       const tooltip = document.createElement('div');

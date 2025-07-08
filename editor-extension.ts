@@ -195,7 +195,6 @@ class HideRevealWidget extends WidgetType {
     const span = document.createElement('span');
     span.textContent = this.displayText;
     span.className = 'hide-reveal-link hide-reveal-link-editor';
-    span.style.cursor = 'pointer';
     
     // Create custom tooltip
     const tooltip = document.createElement('div');
