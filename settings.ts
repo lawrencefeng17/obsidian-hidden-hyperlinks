@@ -26,20 +26,21 @@ export class HideRevealSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl('h2', { text: 'Hidden Hyperlinks Settings' });
 
     containerEl.createEl('p', { 
       text: 'Configure how hidden hyperlinks are formatted and behave.' 
     });
 
-    containerEl.createEl('h3', { text: 'Delimiters' });
+    new Setting(containerEl)
+      .setName('Delimiters')
+      .setHeading();
     
     containerEl.createEl('p', { 
       text: 'Example: ::hidden payload|display text::' 
     });
 
     new Setting(containerEl)
-      .setName('Start Delimiter')
+      .setName('Start delimiter')
       .setDesc('Text that marks the beginning of a hidden block')
       .addText(text =>
         text
@@ -63,7 +64,7 @@ export class HideRevealSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName('End Delimiter')
+      .setName('End delimiter')
       .setDesc('Text that marks the end of a hidden block')
       .addText(text =>
         text
@@ -74,10 +75,12 @@ export class HideRevealSettingTab extends PluginSettingTab {
           })
       );
 
-    containerEl.createEl('h3', { text: 'Behavior' });
+    new Setting(containerEl)
+      .setName('Behavior')
+      .setHeading();
 
     new Setting(containerEl)
-      .setName('Notification Text')
+      .setName('Notification text')
       .setDesc('Message shown when hidden text is copied to clipboard')
       .addText(text =>
         text
